@@ -5,7 +5,7 @@ const app = express();
 const cors = require('cors');
 
 // Initialize Supabase
-const supabase = createClient('YOUR_SUPABASE_URL', 'YOUR_SUPABASE_API_KEY');
+const supabase = createClient('https://qbwmwolxdaykhicyqjoy.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFid213b2x4ZGF5a2hpY3lxam95Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ3MjcyODYsImV4cCI6MjA2MDMwMzI4Nn0.IkXDUfGGOTj2Jm_h3R7xK7fNmISM5Qt_CtzRq8bCK9k');
 
 // Middleware
 app.use(express.json());
