@@ -1,50 +1,83 @@
-// index.js
 const express = require('express');
-const http = require('http');
-const socketIo = require('socket.io');
-const cors = require('cors');
-require('dotenv').config();
-
+const path = require('path');
+const { createClient } = require('@supabase/supabase-js');
 const app = express();
-const server = http.createServer(app);
-const io = socketIo(server, {
-  cors: {
-    origin: '*',
-  },
-});
+const cors = require('cors');
 
-app.use(cors());
+// Initialize Supabase
+const supabase = createClient('YOUR_SUPABASE_URL', 'YOUR_SUPABASE_API_KEY');
+
+// Middleware
 app.use(express.json());
+app.use(express.static(path.join(__dirname, 'static'))); // Serve static files (CSS, JS, etc.)
+app.use(cors()); // Enable CORS
 
-// Import routes
-const authRoutes = require('./routes/auth');
-const chatRoutes = require('./routes/chat');
-
-// Use routes
-app.use('/api/auth', authRoutes);
-app.use('/api/chat', chatRoutes);
-
-// Socket.io connection
-io.on('connection', (socket) => {
-  console.log('New client connected');
-
-  // Handle joining a chat room
-  socket.on('join', ({ room }) => {
-    socket.join(room);
-    console.log(`Client joined room: ${room}`);
-  });
-
-  // Handle sending a message
-  socket.on('message', ({ room, message }) => {
-    io.to(room).emit('message', message);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('Client disconnected');
-  });
+// Routes
+app.get('/', async (req, res) => {
+    res.sendFile(path.join(__dirname, 'templates', 'index.html'));
 });
 
-const PORT = process.env.PORT || 5002;
-server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'templates', 'login.html'));
+});
+
+app.get('/register', (req, res) => {
+    res.sendFile(path.join(__dirname, 'templates', 'register.html'));
+});
+
+app.get('/chat', async (req, res) => {
+    // Fetch users from Supabase for the chat page
+    const { data: users, error } = await supabase
+        .from('users')
+        .select('id, username')
+        .neq('id', 1); // Replace 1 with the logged-in user ID
+    
+    if (error) {
+        return res.status(400).send('Error fetching users');
+    }
+
+    res.render('chat.html', { users });
+});
+
+// API for user registration
+app.post('/register', async (req, res) => {
+    const { username, email, password } = req.body;
+    // Insert user into Supabase
+    const { data, error } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+    });
+
+    if (error) {
+        return res.status(400).send(error.message);
+    }
+
+    await supabase
+        .from('users')
+        .insert([{ username, email, user_id: data.user.id }]);
+
+    res.redirect('/login');
+});
+
+// API for user login
+app.post('/login', async (req, res) => {
+    const { email, password } = req.body;
+
+    const { data, error } = await supabase.auth.signIn({
+        email,
+        password,
+    });
+
+    if (error) {
+        return res.status(400).send(error.message);
+    }
+
+    // Session can be handled with a token or cookie
+    res.redirect('/chat');
+});
+
+// Start server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
 });
